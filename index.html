@@ -37,7 +37,6 @@
                     Vision Scanner
                 </span>
             </div>
-
             <!-- Hidden Settings Gear (Only you click this to configure) -->
             <button id="btnOpenSettings" title="Configure AI Settings" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs">
                 <span>⚙️</span>
@@ -53,7 +52,6 @@
         <div class="lg:col-span-7 flex flex-col items-center">
             <div class="w-full max-w-[500px]">
                 <div id="board" class="w-full chessboard-container aspect-square mb-4 bg-slate-800"></div>
-
                 <!-- Quick Action Toolbar -->
                 <div class="flex items-center justify-between gap-2 bg-slate-900 p-3 rounded-xl border border-slate-800 text-sm">
                     <button id="btnFlip" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
@@ -80,7 +78,6 @@
                     </h2>
                     <span class="text-xs text-blue-400 font-mono">Vision AI</span>
                 </div>
-
                 <!-- Upload Area -->
                 <div id="uploadTrigger" class="border-2 border-dashed border-slate-700 hover:border-blue-500/60 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/40 group">
                     <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
@@ -92,7 +89,6 @@
                     <!-- Image Preview -->
                     <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow mt-2">
                 </div>
-
                 <!-- Recognition Action Button -->
                 <button id="btnRunAI" class="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-medium text-sm transition shadow-lg shadow-blue-500/20 disabled:opacity-50" disabled>
                     ⚡ Recognize Pieces & Calculate FEN
@@ -119,172 +115,4 @@
                             📋 Copy FEN
                         </button>
                     </div>
-                </div>
-            </div>
-
-            <!-- Step 3: Online Engine Analysis -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-                <h2 class="text-base font-semibold flex items-center gap-2 mb-3">
-                    <span>🚀</span> Step 3: Online Engine Analysis
-                </h2>
-                <p class="text-xs text-slate-400 mb-4">Export this position directly into online analysis engines:</p>
-                <div class="grid grid-cols-2 gap-3">
-                    <button id="btnLichess" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-blue-900/40 border border-slate-700 hover:border-blue-500/50 rounded-xl text-xs font-medium text-slate-200 transition">
-                        <span>🐴</span> Open on Lichess
-                    </button>
-                    <button id="btnChessCom" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-emerald-900/40 border border-slate-700 hover:border-emerald-500/50 rounded-xl text-xs font-medium text-slate-200 transition">
-                        <span>♟️</span> Open on Chess.com
-                    </button>
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <!-- Hidden Settings Modal (Only opens when you click the ⚙️ gear icon) -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                    <span>⚙️</span> Vision API Settings
-                </h3>
-                <button id="btnCloseSettings" class="text-slate-400 hover:text-white text-lg">✕</button>
-            </div>
-            
-            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-                Enter your free Google Gemini API Key below. It is saved <strong>strictly inside your personal browser</strong> (localStorage). It is never sent to any server or published on GitHub.
-            </p>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Gemini API Key</label>
-                    <input type="password" id="modalApiKeyInput" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 outline-none" placeholder="AIzaSy...">
-                </div>
-
-                <div class="flex items-center justify-between text-xs">
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 hover:underline">
-                        Get a Free Key at Google AI Studio ↗
-                    </a>
-                </div>
-
-                <div class="flex gap-2 pt-2">
-                    <button id="btnSaveModalKey" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition shadow-lg shadow-blue-500/20">
-                        Save Key Locally
-                    </button>
-                    <button id="btnClearModalKey" class="py-2.5 px-3 bg-slate-800 hover:bg-rose-900/50 text-rose-400 rounded-xl text-xs transition">
-                        Remove
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Application Script -->
-    <script>
-        let board = null;
-        let game = new Chess();
-        let selectedBase64Image = null;
-        let selectedMimeType = 'image/jpeg';
-
-        // 1. Secret Settings Modal & API Key Management
-        function checkKeyStatus() {
-            const key = localStorage.getItem('gemini_vision_api_key');
-            if (key) {
-                $('#keyIndicator').removeClass('bg-rose-500').addClass('bg-emerald-400');
-                $('#modalApiKeyInput').val(key);
-            } else {
-                $('#keyIndicator').removeClass('bg-emerald-400').addClass('bg-rose-500');
-                $('#modalApiKeyInput').val('');
-            }
-        }
-        checkKeyStatus();
-
-        \$('#btnOpenSettings').click(() => \$('#settingsModal').removeClass('hidden'));
-        \$('#btnCloseSettings').click(() => \$('#settingsModal').addClass('hidden'));
-
-        $('#btnSaveModalKey').click(function() {
-            const key = $('#modalApiKeyInput').val().trim();
-            if (key) {
-                localStorage.setItem('gemini_vision_api_key', key);
-                checkKeyStatus();
-                $('#settingsModal').addClass('hidden');
-                alert('API Key saved securely in your browser!');
-            }
-        });
-
-        $('#btnClearModalKey').click(function() {
-            localStorage.removeItem('gemini_vision_api_key');
-            checkKeyStatus();
-            alert('API Key removed.');
-        });
-
-        // 2. Initialize Chessboard
-        const boardConfig = {
-            draggable: true,
-            position: 'start',
-            pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
-            onDrop: handlePieceDrop
-        };
-
-        board = Chessboard('board', boardConfig);
-        syncFenFromGame();
-        $(window).resize(board.resize);
-
-        function handlePieceDrop(source, target) {
-            const move = game.move({
-                from: source,
-                to: target,
-                promotion: 'q'
-            });
-            if (move === null) return 'snapback';
-            syncFenFromGame();
-        }
-
-        function syncFenFromGame() {
-            const fen = game.fen();
-            $('#fenInput').val(fen);
-            displayFenValidation('Valid FEN position', true);
-        }
-
-        function displayFenValidation(message, isValid) {
-            const el = $('#fenValidationMsg');
-            el.text(message);
-            if (isValid) {
-                el.removeClass('text-rose-400').addClass('text-emerald-400');
-            } else {
-                el.removeClass('text-emerald-400').addClass('text-rose-400');
-            }
-        }
-
-        $('#btnUpdateFromFen').click(function() {
-            const fen = $('#fenInput').val().trim();
-            if (game.load(fen)) {
-                board.position(fen);
-                displayFenValidation('✓ Position updated', true);
-            } else {
-                displayFenValidation('✗ Invalid FEN', false);
-            }
-        });
-
-        $('#btnFlip').click(() => board.flip());
-        $('#btnStart').click(() => {
-            game.reset();
-            board.start();
-            syncFenFromGame();
-        });
-        $('#btnClear').click(() => {
-            game.clear();
-            board.clear();
-            $('#fenInput').val('8/8/8/8/8/8/8/8 w - - 0 1');
-            displayFenValidation('Board cleared', true);
-        });
-
-        $('#btnCopyFen').click(function() {
-            navigator.clipboard.writeText($('#fenInput').val().trim()).then(() => {
-                alert('FEN copied to clipboard!');
-            });
-        });
-
-        // 3. Upload & Preview Handling
-        $('#uploadTrigger').click(function(e) {
-            i
+                </di
