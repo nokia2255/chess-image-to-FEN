@@ -222,12 +222,12 @@
 
             // --- 2. Chessboard Initialization & Event Listeners ---
             const boardConfig = {
-                draggable: true,
-                position: 'start',
-                // Using high-res Wikimedia piece images
-                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
-                onDrop: handlePieceDrop
-            };
+    draggable: true,
+    position: 'start',
+    // Using high-res Wikimedia piece images
+    pieceTheme: 'https://fastly.jsdelivr.net/gh/oakmac/chessboardjs@1.0.0/website/img/chesspieces/wikipedia/{piece}.png',
+    onDrop: handlePieceDrop
+};
 
             board = Chessboard('board', boardConfig);
             $(window).resize(board.resize);
