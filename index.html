@@ -252,4 +252,48 @@
                 document.getElementById('fenInput').value = fen;
                 const msg = document.getElementById('fenValidationMsg');
                 msg.textContent = 'Valid position';
-      
+                msg.className = 'text-xs font-mono text-emerald-400';
+            }
+            syncBoardState();
+
+            // Toolbar Controls
+            document.getElementById('btnFlip').onclick = () => board && board.flip();
+            document.getElementById('btnStart').onclick = () => {
+                if (game && board) {
+                    game.reset();
+                    board.start();
+                    syncBoardState();
+                }
+            };
+            document.getElementById('btnClear').onclick = () => {
+                if (game && board) {
+                    game.clear();
+                    board.clear();
+                    document.getElementById('fenInput').value = '8/8/8/8/8/8/8/8 w - - 0 1';
+                }
+            };
+
+            document.getElementById('btnUpdateFromFen').onclick = () => {
+                const fen = document.getElementById('fenInput').value.trim();
+                if (game && game.load(fen)) {
+                    board.position(fen);
+                    syncBoardState();
+                } else {
+                    alert('Invalid FEN position string!');
+                }
+            };
+
+            document.getElementById('btnCopyFen').onclick = () => {
+                const val = document.getElementById('fenInput').value.trim();
+                navigator.clipboard.writeText(val).then(() => alert('FEN copied to clipboard!'));
+            };
+
+            // --- 3. Image Selection Logic ---
+            const uploadTrigger = document.getElementById('uploadTrigger');
+            const imageInput = document.getElementById('imageInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const uploadPrompt = document.getElementById('uploadPrompt');
+            const btnRunAI = document.getElementById('btnRunAI');
+            const aiStatus = document.getElementById('aiStatus');
+
+            uploadTrigger.onclick = () => imageInpu
