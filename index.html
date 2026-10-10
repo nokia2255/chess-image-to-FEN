@@ -3,133 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChessLens AI | Smart Board Scanner</title>
-    <!-- Tailwind CSS (Modern UI Layout) -->
+    <title>ChessLens AI | Smart Board Scanner & Analyzer</title>
+    
+    <!-- Modern Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- jQuery (Switch to ByteDance CDN for absolute speed and bypass blocking) -->
-    <script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/jquery/3.7.1/jquery.min.js"></script>
+    <!-- jQuery (required dependency for chessboard.js) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     
-    <!-- Chessboard.js CSS & JS (Switch to stable cdnjs mirror on BootCDN) -->
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
-    <script src="https://cdn.bootcdn.net/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <!-- Chessboard.js CSS and JavaScript -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     
-    <!-- Chess.js (Switch to reliable domestic mirror) -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <!-- Chess.js for rule calculation and FEN validation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 
     <style>
-        /* Modern shadow and smooth corner outline for the board wrapper */
-        .chessboard-container {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+        /* Smooth shadow and subtle rounded border for chessboard */
+        .chessboard-box {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
             border-radius: 12px;
             overflow: hidden;
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
 
     <!-- Top Navigation Header -->
-    <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur-md sticky top-0 z-40">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <span class="text-2xl">♟️</span>
                 <span class="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
                     ChessLens AI
                 </span>
                 <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
-                    Vision Scanner
+                    Serverless Vision
                 </span>
             </div>
-
-            <!-- Secret Settings Gear (Click to save Gemini API key locally) -->
-            <button id="btnOpenSettings" type="button" class="cursor-pointer p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs">
-                <span>⚙️ Settings</span>
-                <span id="keyIndicator" class="w-2 h-2 rounded-full bg-rose-500"></span>
-            </button>
+            <div class="text-xs text-slate-400 hidden sm:block">
+                Powered by Gemini 2.5 Flash & Chessboard.js
+            </div>
         </div>
     </header>
 
-    <!-- Main Dynamic Workspace -->
+    <!-- Main Application Workspace -->
     <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        <!-- Left Pane: Interactive Board (7 Columns) -->
+        <!-- Left Side: Interactive Chessboard Display (7 Columns) -->
         <div class="lg:col-span-7 flex flex-col items-center">
             <div class="w-full max-w-[500px]">
-                <div id="board" class="w-full chessboard-container aspect-square mb-4 bg-slate-800"></div>
+                
+                <!-- Chessboard target container -->
+                <div id="board" class="w-full chessboard-box aspect-square mb-4 bg-slate-800"></div>
 
-                <!-- Board Action Toolbar -->
-                <div class="flex items-center justify-between gap-2 bg-slate-900 p-3 rounded-xl border border-slate-800 text-sm">
-                    <button id="btnFlip" type="button" class="cursor-pointer px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+                <!-- Board Action Controls -->
+                <div class="flex items-center justify-between gap-2 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-sm">
+                    <button id="btnFlip" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition font-medium">
                         🔄 Flip Board
                     </button>
-                    <button id="btnStart" type="button" class="cursor-pointer px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
-                        ⏮️ Reset Position
+                    <button id="btnStart" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition font-medium">
+                        ⏮️ Start Setup
                     </button>
-                    <button id="btnClear" type="button" class="cursor-pointer px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 transition">
+                    <button id="btnClear" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-400 transition font-medium">
                         🗑️ Clear Board
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Right Pane: Flow Controls & Operations (5 Columns) -->
+        <!-- Right Side: Workflow & Vision Controls (5 Columns) -->
         <div class="lg:col-span-5 space-y-6">
 
-            <!-- Card 1: Camera Photo Shoot / Image Selection -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-base font-semibold flex items-center gap-2">
-                        <span>📸</span> Step 1: Take Photo or Upload
+            <!-- Card 0: API Key Configuration -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <span>🔑</span> Vision API Key Setup
                     </h2>
-                    <span class="text-xs text-blue-400 font-mono">Vision AI</span>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-blue-400 hover:underline">
+                        Get Free Key ↗
+                    </a>
                 </div>
-
-                <!-- Upload Drag & Dropzone Trigger Box -->
-                <div id="uploadTrigger" class="border-2 border-dashed border-slate-700 hover:border-blue-500/60 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/40">
-                    <input type="file" id="imageInput" accept="image/*" class="hidden">
-                    <div id="uploadPrompt" class="space-y-1 pointer-events-none">
-                        <div class="text-3xl text-slate-500">📷</div>
-                        <p class="text-sm font-medium text-slate-300">Click to Snap or Upload Board</p>
-                        <p class="text-xs text-slate-500">Supports phone physical photos & screenshots</p>
-                    </div>
-                    <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow mt-2">
+                <p class="text-xs text-slate-400 mb-3">
+                    Paste your Google AI Studio key below. It is stored safely in your personal browser and never sent to GitHub.
+                </p>
+                <div class="flex gap-2">
+                    <input type="password" id="apiKeyInput" class="flex-1 bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 outline-none" placeholder="AIzaSy...">
+                    <button id="btnSaveKey" type="button" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition shadow-lg shadow-blue-500/20">
+                        Save
+                    </button>
                 </div>
-
-                <button id="btnRunAI" type="button" class="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-medium text-sm transition shadow-lg disabled:opacity-40 cursor-pointer" disabled>
-                    ⚡ Recognize Pieces & Calculate FEN
-                </button>
-                <div id="aiStatus" class="text-xs text-slate-400 mt-2 text-center hidden"></div>
+                <div id="keyNotice" class="text-xs text-emerald-400 mt-2 font-medium hidden">
+                    ✓ API key active in browser storage
+                </div>
             </div>
 
-            <!-- Card 2: FEN Code Area -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+            <!-- Card 1: Capture or Upload Image -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <h2 class="text-base font-semibold flex items-center gap-2 mb-3">
+                    <span>📸</span> Step 1: Scan Chessboard Photo
+                </h2>
+
+                <!-- Upload Drag & Click Trigger Area -->
+                <div id="uploadBox" class="border-2 border-dashed border-slate-700 hover:border-blue-500/60 rounded-xl p-5 text-center cursor-pointer transition bg-slate-950/40">
+                    <input type="file" id="fileInput" accept="image/*" capture="environment" class="hidden">
+                    <div id="uploadPlaceholder" class="space-y-1">
+                        <div class="text-3xl text-slate-500">📷</div>
+                        <p class="text-sm font-medium text-slate-300">Click to Snap or Browse Image</p>
+                        <p class="text-xs text-slate-500">Works with physical boards, books & screenshots</p>
+                    </div>
+                    <!-- Image Preview Container -->
+                    <img id="imageDisplay" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow mt-2">
+                </div>
+
+                <!-- Recognition Trigger Button -->
+                <button id="btnScanAI" type="button" class="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-medium text-sm transition shadow-lg shadow-blue-500/20 disabled:opacity-40" disabled>
+                    ⚡ Recognize Pieces & Calculate FEN
+                </button>
+                <div id="aiMessage" class="text-xs text-slate-400 mt-2 text-center hidden"></div>
+            </div>
+
+            <!-- Card 2: FEN Code & Position Review -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <h2 class="text-base font-semibold flex items-center gap-2 mb-3">
                     <span>📝</span> Step 2: FEN Position
                 </h2>
                 <div class="space-y-3">
-                    <textarea id="fenInput" rows="2" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl p-2.5 text-xs font-mono text-slate-200 outline-none resize-none transition" placeholder="FEN position string..."></textarea>
-                    <div id="fenValidationMsg" class="text-xs font-mono"></div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Standard FEN Notation</label>
+                        <textarea id="fenBox" rows="2" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl p-2.5 text-xs font-mono text-slate-200 outline-none resize-none transition" placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"></textarea>
+                    </div>
+                    <div id="fenStatus" class="text-xs font-mono"></div>
                     <div class="flex gap-2">
-                        <button id="btnUpdateFromFen" type="button" class="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition cursor-pointer">
+                        <button id="btnApplyFen" type="button" class="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition">
                             Apply FEN to Board
                         </button>
-                        <button id="btnCopyFen" type="button" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs transition cursor-pointer">
+                        <button id="btnCopyFen" type="button" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs transition">
                             📋 Copy FEN
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 3: External Platform Export Links -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+            <!-- Card 3: Online Engine Analysis -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <h2 class="text-base font-semibold flex items-center gap-2 mb-3">
-                    <span>🚀</span> Step 3: Online Engine Analysis
+                    <span>🚀</span> Step 3: Analyze or Play Online
                 </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Export this position directly into global analysis engines:
+                </p>
                 <div class="grid grid-cols-2 gap-3">
-                    <button id="btnLichess" type="button" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-blue-900/40 border border-slate-700 rounded-xl text-xs font-medium text-slate-200 transition cursor-pointer">
+                    <button id="btnOpenLichess" type="button" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-blue-900/40 border border-slate-700 rounded-xl text-xs font-medium text-slate-200 transition">
                         <span>🐴</span> Open on Lichess
                     </button>
-                    <button id="btnChessCom" type="button" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-emerald-900/40 border border-slate-700 rounded-xl text-xs font-medium text-slate-200 transition cursor-pointer">
+                    <button id="btnOpenChessCom" type="button" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-emerald-900/40 border border-slate-700 rounded-xl text-xs font-medium text-slate-200 transition">
                         <span>♟️</span> Open on Chess.com
                     </button>
                 </div>
@@ -138,162 +167,118 @@
         </div>
     </main>
 
-    <!-- Settings Backdrop Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                    <span>⚙️</span> Vision API Settings
-                </h3>
-                <button id="btnCloseSettings" type="button" class="text-slate-400 hover:text-white text-lg cursor-pointer">✕</button>
-            </div>
-            
-            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-                Paste your free Google Gemini API Key. It is saved <strong>strictly inside your browser</strong> (localStorage) and never published to your repository.
-            </p>
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
+        Hosted on GitHub Pages | Built with Tailwind CSS, Chessboard.js & Gemini Vision AI
+    </footer>
 
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Gemini API Key</label>
-                    <input type="password" id="modalApiKeyInput" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 outline-none" placeholder="AIzaSy...">
-                </div>
-
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-blue-400 hover:underline block">
-                    Get a Free Key at Google AI Studio ↗
-                </a>
-
-                <div class="flex gap-2 pt-2">
-                    <button id="btnSaveModalKey" type="button" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition cursor-pointer">
-                        Save Key Locally
-                    </button>
-                    <button id="btnClearModalKey" type="button" class="py-2.5 px-3 bg-slate-800 hover:bg-rose-900/50 text-rose-400 rounded-xl text-xs transition cursor-pointer">
-                        Remove
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Background Javascript logic -->
+    <!-- Core JavaScript Logic -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // Execute after all DOM elements are completely parsed
+        $(document).ready(function() {
             let board = null;
-            let game = (typeof Chess !== 'undefined') ? new Chess() : null;
-            let selectedBase64Image = null;
-            let selectedMimeType = 'image/jpeg';
+            let game = new Chess();
+            let encodedImageData = null;
+            let imageMime = 'image/jpeg';
 
-            // --- 1. Settings & Modal UI Interaction (Safe Toggle with Class Swapping) ---
-            const openSettingsBtn = document.getElementById('btnOpenSettings');
-            const closeSettingsBtn = document.getElementById('btnCloseSettings');
-            const settingsModal = document.getElementById('settingsModal');
-            const keyIndicator = document.getElementById('keyIndicator');
-            const modalApiKeyInput = document.getElementById('modalApiKeyInput');
-
-            function updateKeyBadge() {
-                const key = localStorage.getItem('gemini_vision_api_key');
-                if (key) {
-                    keyIndicator.className = 'w-2 h-2 rounded-full bg-emerald-400';
-                    modalApiKeyInput.value = key;
-                } else {
-                    keyIndicator.className = 'w-2 h-2 rounded-full bg-rose-500';
-                    modalApiKeyInput.value = '';
-                }
+            // 1. API Key local storage initialization
+            const existingKey = localStorage.getItem('chess_gemini_api_key');
+            if (existingKey) {
+                $('#apiKeyInput').val(existingKey);
+                $('#keyNotice').removeClass('hidden');
             }
-            updateKeyBadge();
 
-            // Safe toggle handler to prevent class override conflicts
-            openSettingsBtn.onclick = function() {
-                settingsModal.classList.remove('hidden');
-                settingsModal.classList.add('flex');
-            };
-
-            closeSettingsBtn.onclick = function() {
-                settingsModal.classList.remove('flex');
-                settingsModal.classList.add('hidden');
-            };
-
-            document.getElementById('btnSaveModalKey').onclick = function() {
-                const key = modalApiKeyInput.value.trim();
+            $('#btnSaveKey').click(function() {
+                const key = $('#apiKeyInput').val().trim();
                 if (key) {
-                    localStorage.setItem('gemini_vision_api_key', key);
-                    updateKeyBadge();
-                    settingsModal.classList.remove('flex');
-                    settingsModal.classList.add('hidden');
-                    alert('API Key saved successfully!');
+                    localStorage.setItem('chess_gemini_api_key', key);
+                    $('#keyNotice').removeClass('hidden');
+                    alert('Gemini API Key saved in your local browser!');
+                } else {
+                    localStorage.removeItem('chess_gemini_api_key');
+                    $('#keyNotice').addClass('hidden');
                 }
-            };
+            });
 
-            document.getElementById('btnClearModalKey').onclick = function() {
-                localStorage.removeItem('gemini_vision_api_key');
-                updateKeyBadge();
-                alert('API Key removed.');
-            };
-
-            // --- 2. Safe Board Render Configuration ---
-            if (typeof Chessboard !== 'undefined') {
-                board = Chessboard('board', {
-                    draggable: true,
-                    position: 'start',
-                    // Safe domestic-accessible CDN mirror for chess pieces
-                    pieceTheme: 'https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/chessboard-js/1.0.0/img/chesspieces/wikipedia/{piece}.png',
-                    onDrop: function(source, target) {
-                        if (!game) return;
-                        const move = game.move({ from: source, to: target, promotion: 'q' });
-                        if (move === null) return 'snapback';
-                        syncBoardState();
-                    }
+            // 2. Initialize Chessboard.js
+            function onDragPiece(source, target) {
+                const move = game.move({
+                    from: source,
+                    to: target,
+                    promotion: 'q'
                 });
-                window.addEventListener('resize', () => board && board.resize());
+                if (move === null) return 'snapback';
+                updateFenUI();
             }
 
-            function syncBoardState() {
-                if (!game) return;
-                const fen = game.fen();
-                document.getElementById('fenInput').value = fen;
-                const msg = document.getElementById('fenValidationMsg');
-                msg.textContent = 'Valid position';
-                msg.className = 'text-xs font-mono text-emerald-400';
+            const boardOptions = {
+                draggable: true,
+                position: 'start',
+                // Using high-speed official CDN Wikipedia chess pieces
+                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+                onDrop: onDragPiece
+            };
+
+            board = Chessboard('board', boardOptions);
+            $(window).resize(board.resize);
+            updateFenUI();
+
+            function updateFenUI() {
+                const currentFen = game.fen();
+                $('#fenBox').val(currentFen);
+                $('#fenStatus').text('✓ Valid chess position').removeClass('text-rose-400').addClass('text-emerald-400');
             }
-            syncBoardState();
 
-            // Toolbar Controls
-            document.getElementById('btnFlip').onclick = () => board && board.flip();
-            document.getElementById('btnStart').onclick = () => {
-                if (game && board) {
-                    game.reset();
-                    board.start();
-                    syncBoardState();
-                }
-            };
-            document.getElementById('btnClear').onclick = () => {
-                if (game && board) {
-                    game.clear();
-                    board.clear();
-                    document.getElementById('fenInput').value = '8/8/8/8/8/8/8/8 w - - 0 1';
-                }
-            };
+            // Board Controls
+            $('#btnFlip').click(() => board.flip());
+            $('#btnStart').click(() => {
+                game.reset();
+                board.start();
+                updateFenUI();
+            });
+            $('#btnClear').click(() => {
+                game.clear();
+                board.clear();
+                $('#fenBox').val('8/8/8/8/8/8/8/8 w - - 0 1');
+                $('#fenStatus').text('Board cleared').removeClass('text-rose-400').addClass('text-slate-400');
+            });
 
-            document.getElementById('btnUpdateFromFen').onclick = () => {
-                const fen = document.getElementById('fenInput').value.trim();
-                if (game && game.load(fen)) {
-                    board.position(fen);
-                    syncBoardState();
+            // Manual FEN Input
+            $('#btnApplyFen').click(function() {
+                const manualFen = $('#fenBox').val().trim();
+                if (game.load(manualFen)) {
+                    board.position(manualFen);
+                    $('#fenStatus').text('✓ Board updated successfully').removeClass('text-rose-400').addClass('text-emerald-400');
                 } else {
-                    alert('Invalid FEN position string!');
+                    $('#fenStatus').text('✗ Invalid FEN string').removeClass('text-emerald-400').addClass('text-rose-400');
                 }
-            };
+            });
 
-            document.getElementById('btnCopyFen').onclick = () => {
-                const val = document.getElementById('fenInput').value.trim();
-                navigator.clipboard.writeText(val).then(() => alert('FEN copied to clipboard!'));
-            };
+            $('#btnCopyFen').click(function() {
+                const text = $('#fenBox').val().trim();
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('FEN copied to clipboard!');
+                });
+            });
 
-            // --- 3. Image Selection Logic ---
-            const uploadTrigger = document.getElementById('uploadTrigger');
-            const imageInput = document.getElementById('imageInput');
-            const imagePreview = document.getElementById('imagePreview');
-            const uploadPrompt = document.getElementById('uploadPrompt');
-            const btnRunAI = document.getElementById('btnRunAI');
-            const aiStatus = document.getElementById('aiStatus');
+            // 3. Photo Upload & Preview
+            $('#uploadBox').click(function(e) {
+                if (e.target.id !== 'fileInput') {
+                    $('#fileInput').click();
+                }
+            });
 
-            uploadTrigger.onclick = () => imageInpu
+            $('#fileInput').change(function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    imageMime = file.type || 'image/jpeg';
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const base64Url = evt.target.result;
+                        $('#imageDisplay').attr('src', base64Url).removeClass('hidden');
+                        $('#uploadPlaceholder').addClass('hidden');
+                        $('#btnScanAI').prop('disabled', false);
+
+                        // Extract raw base64 string
+                        encodedImageData = base64Url.split(',')[1];
+                        $('#aiMessage').text('Image ready. Click button above t
