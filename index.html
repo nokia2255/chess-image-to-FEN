@@ -25,7 +25,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Top Header -->
+    <!-- Top Navigation Header -->
     <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
@@ -37,10 +37,11 @@
                     Vision Scanner
                 </span>
             </div>
-            <!-- Hidden Settings Gear (Only you click this to configure) -->
+
+            <!-- Hidden Settings Gear (Click here to configure API Key once) -->
             <button id="btnOpenSettings" title="Configure AI Settings" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs">
                 <span>⚙️</span>
-                <span id="keyIndicator" class="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span id="keyIndicator" class="w-2 h-2 rounded-full bg-rose-500" title="API Key status"></span>
             </button>
         </div>
     </header>
@@ -52,6 +53,7 @@
         <div class="lg:col-span-7 flex flex-col items-center">
             <div class="w-full max-w-[500px]">
                 <div id="board" class="w-full chessboard-container aspect-square mb-4 bg-slate-800"></div>
+
                 <!-- Quick Action Toolbar -->
                 <div class="flex items-center justify-between gap-2 bg-slate-900 p-3 rounded-xl border border-slate-800 text-sm">
                     <button id="btnFlip" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
@@ -76,8 +78,9 @@
                     <h2 class="text-base font-semibold flex items-center gap-2">
                         <span>📸</span> Step 1: Take Photo or Upload
                     </h2>
-                    <span class="text-xs text-blue-400 font-mono">Vision AI</span>
+                    <span class="text-xs text-blue-400 font-mono">Gemini Vision</span>
                 </div>
+
                 <!-- Upload Area -->
                 <div id="uploadTrigger" class="border-2 border-dashed border-slate-700 hover:border-blue-500/60 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/40 group">
                     <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
@@ -89,6 +92,7 @@
                     <!-- Image Preview -->
                     <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow mt-2">
                 </div>
+
                 <!-- Recognition Action Button -->
                 <button id="btnRunAI" class="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-medium text-sm transition shadow-lg shadow-blue-500/20 disabled:opacity-50" disabled>
                     ⚡ Recognize Pieces & Calculate FEN
@@ -170,4 +174,183 @@
                     <button id="btnClearModalKey" class="py-2.5 px-3 bg-slate-800 hover:bg-rose-900/50 text-rose-400 rounded-xl text-xs transition">
                         Remove
                     </button>
-                </di
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Ensure the entire DOM tree is fully loaded before executing scripts
+        $(document).ready(function() {
+            let board = null;
+            let game = new Chess();
+            let selectedBase64Image = null;
+            let selectedMimeType = 'image/jpeg';
+
+            // --- 1. Settings Modal & Local Storage Management ---
+            function checkKeyStatus() {
+                const key = localStorage.getItem('gemini_vision_api_key');
+                if (key) {
+                    $('#keyIndicator').removeClass('bg-rose-500').addClass('bg-emerald-400');
+                    $('#modalApiKeyInput').val(key);
+                } else {
+                    $('#keyIndicator').removeClass('bg-emerald-400').addClass('bg-rose-500');
+                    $('#modalApiKeyInput').val('');
+                }
+            }
+            checkKeyStatus();
+
+            \$('#btnOpenSettings').click(() => \$('#settingsModal').removeClass('hidden'));
+            \$('#btnCloseSettings').click(() => \$('#settingsModal').addClass('hidden'));
+
+            $('#btnSaveModalKey').click(function() {
+                const key = $('#modalApiKeyInput').val().trim();
+                if (key) {
+                    localStorage.setItem('gemini_vision_api_key', key);
+                    checkKeyStatus();
+                    $('#settingsModal').addClass('hidden');
+                    alert('API Key saved securely in your browser!');
+                }
+            });
+
+            $('#btnClearModalKey').click(function() {
+                localStorage.removeItem('gemini_vision_api_key');
+                checkKeyStatus();
+                alert('API Key removed.');
+            });
+
+            // --- 2. Chessboard Initialization & Event Listeners ---
+            const boardConfig = {
+                draggable: true,
+                position: 'start',
+                // Using high-res Wikimedia piece images
+                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+                onDrop: handlePieceDrop
+            };
+
+            board = Chessboard('board', boardConfig);
+            $(window).resize(board.resize);
+
+            function handlePieceDrop(source, target) {
+                const move = game.move({ from: source, to: target, promotion: 'q' });
+                if (move === null) return 'snapback';
+                syncFenFromGame();
+            }
+
+            function syncFenFromGame() {
+                const fen = game.fen();
+                $('#fenInput').val(fen);
+                displayFenValidation('Valid FEN position', true);
+            }
+
+            function displayFenValidation(message, isValid) {
+                const el = $('#fenValidationMsg');
+                el.text(message);
+                el.toggleClass('text-rose-400', !isValid).toggleClass('text-emerald-400', isValid);
+            }
+
+            syncFenFromGame();
+
+            $('#btnUpdateFromFen').click(function() {
+                const fen = $('#fenInput').val().trim();
+                if (game.load(fen)) {
+                    board.position(fen);
+                    displayFenValidation('✓ Position updated', true);
+                } else {
+                    displayFenValidation('✗ Invalid FEN', false);
+                }
+            });
+
+            $('#btnFlip').click(() => board.flip());
+            $('#btnStart').click(() => {
+                game.reset();
+                board.start();
+                syncFenFromGame();
+            });
+            $('#btnClear').click(() => {
+                game.clear();
+                board.clear();
+                $('#fenInput').val('8/8/8/8/8/8/8/8 w - - 0 1');
+                displayFenValidation('Board cleared', true);
+            });
+
+            $('#btnCopyFen').click(function() {
+                navigator.clipboard.writeText($('#fenInput').val().trim()).then(() => {
+                    alert('FEN copied to clipboard!');
+                });
+            });
+
+            // --- 3. Image Upload and Base64 Parsing ---
+            $('#uploadTrigger').click((e) => {
+                if (e.target.id !== 'imageInput') $('#imageInput').click();
+            });
+
+            $('#imageInput').change(function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    selectedMimeType = file.type || 'image/jpeg';
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const dataUrl = event.target.result;
+                        $('#imagePreview').attr('src', dataUrl).removeClass('hidden');
+                        $('#uploadPrompt').addClass('hidden');
+                        $('#btnRunAI').prop('disabled', false);
+
+                        // Extract only the raw base64 string without data:image/xxx;base64, header
+                        selectedBase64Image = dataUrl.split(',')[1];
+                        $('#aiStatus').text('Image loaded. Ready for AI scanning.').removeClass('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // --- 4. Call Vision AI for Board Recognition ---
+            $('#btnRunAI').click(async function() {
+                const apiKey = localStorage.getItem('gemini_vision_api_key');
+                if (!apiKey) {
+                    alert('Please click the ⚙️ gear icon in the top right to enter your free API Key first.');
+                    $('#settingsModal').removeClass('hidden');
+                    return;
+                }
+                if (!selectedBase64Image) {
+                    alert('Please upload a board photo first.');
+                    return;
+                }
+
+                const btn = $(this);
+                const statusEl = $('#aiStatus');
+                btn.prop('disabled', true);
+                statusEl.removeClass('hidden').html('⏳ Analyzing pieces with Vision AI...');
+
+                try {
+                    const systemPrompt = `You are an expert chess engine and computer vision system.
+Analyze this chessboard photo carefully. Look at all 64 squares from rank 8 to 1, and file a to h.
+Identify the piece on each square (White: K, Q, R, B, N, P; Black: k, q, r, b, n, p).
+Output ONLY the valid FEN string representing this position. Do NOT include markdown code blocks, backticks, or extra text.`;
+
+                    // Using the latest Google Gemini Flash multimodal endpoint
+                    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+                    const payload = {
+                        contents: [{
+                            parts: [
+                                { text: systemPrompt },
+                                {
+                                    inline_data: {
+                                        mime_type: selectedMimeType,
+                                        data: selectedBase64Image
+                                    }
+                                }
+                            ]
+                        }],
+                        generationConfig: {
+                            temperature: 0.1
+                        }
+                    };
+
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+               
