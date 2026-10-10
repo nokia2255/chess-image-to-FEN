@@ -135,8 +135,8 @@
         </div>
     </main>
 
-    <!-- Settings Backdrop Modal overlay -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <!-- Settings Backdrop Modal (Tailwind flex helper dynamically applied by JS) -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
@@ -179,7 +179,7 @@
             let selectedBase64Image = null;
             let selectedMimeType = 'image/jpeg';
 
-            // --- 1. Settings & Modal UI Interaction (Native Event Binds for 100% Reliability) ---
+            // --- 1. Settings & Modal UI Interaction (Safe Toggle with Class Swapping) ---
             const openSettingsBtn = document.getElementById('btnOpenSettings');
             const closeSettingsBtn = document.getElementById('btnCloseSettings');
             const settingsModal = document.getElementById('settingsModal');
@@ -198,14 +198,23 @@
             }
             updateKeyBadge();
 
-            openSettingsBtn.onclick = () => settingsModal.classList.remove('hidden');
-            closeSettingsBtn.onclick = () => settingsModal.classList.add('hidden');
+            // Safe toggle handler to prevent class override conflicts
+            openSettingsBtn.onclick = function() {
+                settingsModal.classList.remove('hidden');
+                settingsModal.classList.add('flex');
+            };
+
+            closeSettingsBtn.onclick = function() {
+                settingsModal.classList.remove('flex');
+                settingsModal.classList.add('hidden');
+            };
 
             document.getElementById('btnSaveModalKey').onclick = function() {
                 const key = modalApiKeyInput.value.trim();
                 if (key) {
                     localStorage.setItem('gemini_vision_api_key', key);
                     updateKeyBadge();
+                    settingsModal.classList.remove('flex');
                     settingsModal.classList.add('hidden');
                     alert('API Key saved successfully!');
                 }
@@ -263,4 +272,109 @@
 
             document.getElementById('btnUpdateFromFen').onclick = () => {
                 const fen = document.getElementById('fenInput').value.trim();
-         
+                if (game && game.load(fen)) {
+                    board.position(fen);
+                    syncBoardState();
+                } else {
+                    alert('Invalid FEN position string!');
+                }
+            };
+
+            document.getElementById('btnCopyFen').onclick = () => {
+                const val = document.getElementById('fenInput').value.trim();
+                navigator.clipboard.writeText(val).then(() => alert('FEN copied to clipboard!'));
+            };
+
+            // --- 3. Image Selection Logic ---
+            const uploadTrigger = document.getElementById('uploadTrigger');
+            const imageInput = document.getElementById('imageInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const uploadPrompt = document.getElementById('uploadPrompt');
+            const btnRunAI = document.getElementById('btnRunAI');
+            const aiStatus = document.getElementById('aiStatus');
+
+            uploadTrigger.onclick = () => imageInput.click();
+
+            imageInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                selectedMimeType = file.type || 'image/jpeg';
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const dataUrl = evt.target.result;
+                    imagePreview.src = dataUrl;
+                    imagePreview.classList.remove('hidden');
+                    uploadPrompt.classList.add('hidden');
+                    btnRunAI.disabled = false;
+                    selectedBase64Image = dataUrl.split(',')[1];
+                    aiStatus.textContent = 'Image loaded. Ready for AI scanning.';
+                    aiStatus.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            };
+
+            // --- 4. Call Gemini Vision API ---
+            btnRunAI.onclick = async function() {
+                const apiKey = localStorage.getItem('gemini_vision_api_key');
+                if (!apiKey) {
+                    alert('Please click the ⚙️ Settings button in the top right corner to save your Gemini API Key first.');
+                    settingsModal.classList.remove('hidden');
+                    settingsModal.classList.add('flex');
+                    return;
+                }
+                if (!selectedBase64Image) {
+                    alert('Please choose or photograph a chessboard image first.');
+                    return;
+                }
+
+                btnRunAI.disabled = true;
+                aiStatus.classList.remove('hidden');
+                aiStatus.innerHTML = '⏳ Scanning board with Vision AI...';
+
+                try {
+                    const systemPrompt = "Analyze this chessboard image. Return ONLY the standard FEN representation. Do NOT include explanations, markdown code blocks, or extra text.";
+                    const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey;
+
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: systemPrompt },
+                                    { inline_data: { mime_type: selectedMimeType, data: selectedBase64Image } }
+                                ]
+                            }],
+                            generationConfig: { temperature: 0.1 }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error ? err.error.message : 'API request failed');
+                    }
+
+                    const data = await response.json();
+                    let rawFen = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+                    
+                    // --- EXTREMELY SAFE STRING CLEANING ---
+                    rawFen = rawFen.replace("```html", "");
+                    rawFen = rawFen.replace("```json", "");
+                    rawFen = rawFen.replace("```javascript", "");
+                    rawFen = rawFen.replace("```chess", "");
+                    rawFen = rawFen.replace("```", "");
+                    rawFen = rawFen.replace("```", "");
+                    rawFen = rawFen.trim();
+
+                    const parts = rawFen.split(" ");
+                    if (parts.length === 1 && parts[0].indexOf('/') !== -1) {
+                        rawFen = parts[0] + ' w KQkq - 0 1';
+                    }
+
+                    if (game && game.load(rawFen)) {
+                        board.position(rawFen);
+                        syncBoardState();
+                        aiStatus.innerHTML = '🎉 Recognition successful!';
+                    } else if (board) {
+                        board.position(parts[0]);
+                        document.getElementByI
