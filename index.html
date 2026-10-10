@@ -137,11 +137,10 @@
                     </button>
                 </div>
             </div>
-
         </div>
     </main>
 
-    <!-- Hidden Settings Modal (Only opens when you click the ⚙️ gear icon) -->
+    <!-- Hidden Settings Modal -->
     <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
             <div class="flex items-center justify-between mb-4">
@@ -152,7 +151,7 @@
             </div>
             
             <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-                Enter your free Google Gemini API Key below. It is saved <strong>strictly inside your personal browser</strong> (localStorage). It is never sent to any server or published on GitHub.
+                Enter your free Google Gemini API Key. It is saved <strong>strictly inside your browser</strong> (localStorage) and is never published on GitHub.
             </p>
 
             <div class="space-y-4">
@@ -161,11 +160,9 @@
                     <input type="password" id="modalApiKeyInput" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 outline-none" placeholder="AIzaSy...">
                 </div>
 
-                <div class="flex items-center justify-between text-xs">
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 hover:underline">
-                        Get a Free Key at Google AI Studio ↗
-                    </a>
-                </div>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-blue-400 hover:underline">
+                    Get a Free Key at Google AI Studio ↗
+                </a>
 
                 <div class="flex gap-2 pt-2">
                     <button id="btnSaveModalKey" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition shadow-lg shadow-blue-500/20">
@@ -181,56 +178,24 @@
 
     <!-- Application Script -->
     <script>
-        // Ensure the entire DOM tree is fully loaded before executing scripts
+        // ***** FINAL FIX: Wait for the DOM to be fully loaded before running any scripts *****
         $(document).ready(function() {
             let board = null;
             let game = new Chess();
             let selectedBase64Image = null;
             let selectedMimeType = 'image/jpeg';
 
-            // --- 1. Settings Modal & Local Storage Management ---
+            // --- 1. Define All Functions First ---
+
             function checkKeyStatus() {
                 const key = localStorage.getItem('gemini_vision_api_key');
+                $('#keyIndicator').toggleClass('bg-rose-500', !key).toggleClass('bg-emerald-400', !!key);
                 if (key) {
-                    $('#keyIndicator').removeClass('bg-rose-500').addClass('bg-emerald-400');
                     $('#modalApiKeyInput').val(key);
                 } else {
-                    $('#keyIndicator').removeClass('bg-emerald-400').addClass('bg-rose-500');
                     $('#modalApiKeyInput').val('');
                 }
             }
-            checkKeyStatus();
-
-            \$('#btnOpenSettings').click(() => \$('#settingsModal').removeClass('hidden'));
-            \$('#btnCloseSettings').click(() => \$('#settingsModal').addClass('hidden'));
-
-            $('#btnSaveModalKey').click(function() {
-                const key = $('#modalApiKeyInput').val().trim();
-                if (key) {
-                    localStorage.setItem('gemini_vision_api_key', key);
-                    checkKeyStatus();
-                    $('#settingsModal').addClass('hidden');
-                    alert('API Key saved securely in your browser!');
-                }
-            });
-
-            $('#btnClearModalKey').click(function() {
-                localStorage.removeItem('gemini_vision_api_key');
-                checkKeyStatus();
-                alert('API Key removed.');
-            });
-
-            // --- 2. Chessboard Initialization & Event Listeners ---
-            const boardConfig = {
-    draggable: true,
-    position: 'start',
-    // Using high-res Wikimedia piece images
-    pieceTheme: 'https://fastly.jsdelivr.net/gh/oakmac/chessboardjs@1.0.0/website/img/chesspieces/wikipedia/{piece}.png',
-    onDrop: handlePieceDrop
-};
-
-            board = Chessboard('board', boardConfig);
-            $(window).resize(board.resize);
 
             function handlePieceDrop(source, target) {
                 const move = game.move({ from: source, to: target, promotion: 'q' });
@@ -250,7 +215,42 @@
                 el.toggleClass('text-rose-400', !isValid).toggleClass('text-emerald-400', isValid);
             }
 
+            // --- 2. Initialize Board & Set Initial State ---
+            
+            const boardConfig = {
+                draggable: true,
+                position: 'start',
+                // Using a stable, high-speed CDN for piece images
+                pieceTheme: 'https://fastly.jsdelivr.net/gh/oakmac/chessboardjs@1.0.0/website/img/chesspieces/wikipedia/{piece}.png',
+                onDrop: handlePieceDrop
+            };
+            board = Chessboard('board', boardConfig);
+            $(window).resize(board.resize);
+            
+            // Now that the board exists, sync its state to the UI
             syncFenFromGame();
+            checkKeyStatus();
+
+            // --- 3. Bind All Event Listeners ---
+
+            $('#btnOpenSettings').click(() => $('#settingsModal').removeClass('hidden'));
+            $('#btnCloseSettings').click(() => $('#settingsModal').addClass('hidden'));
+
+            $('#btnSaveModalKey').click(function() {
+                const key = $('#modalApiKeyInput').val().trim();
+                if (key) {
+                    localStorage.setItem('gemini_vision_api_key', key);
+                    checkKeyStatus();
+                    $('#settingsModal').addClass('hidden');
+                    alert('API Key saved securely in your browser!');
+                }
+            });
+
+            $('#btnClearModalKey').click(function() {
+                localStorage.removeItem('gemini_vision_api_key');
+                checkKeyStatus();
+                alert('API Key removed.');
+            });
 
             $('#btnUpdateFromFen').click(function() {
                 const fen = $('#fenInput').val().trim();
@@ -281,7 +281,6 @@
                 });
             });
 
-            // --- 3. Image Upload and Base64 Parsing ---
             $('#uploadTrigger').click((e) => {
                 if (e.target.id !== 'imageInput') $('#imageInput').click();
             });
@@ -296,61 +295,84 @@
                         $('#imagePreview').attr('src', dataUrl).removeClass('hidden');
                         $('#uploadPrompt').addClass('hidden');
                         $('#btnRunAI').prop('disabled', false);
-
-                        // Extract only the raw base64 string without data:image/xxx;base64, header
                         selectedBase64Image = dataUrl.split(',')[1];
-                        $('#aiStatus').text('Image loaded. Ready for AI scanning.').removeClass('hidden');
+                        $('#aiStatus').text('Image ready for recognition.').removeClass('hidden');
                     };
                     reader.readAsDataURL(file);
                 }
             });
 
-            // --- 4. Call Vision AI for Board Recognition ---
+            // --- 4. Vision AI Call Logic ---
             $('#btnRunAI').click(async function() {
                 const apiKey = localStorage.getItem('gemini_vision_api_key');
                 if (!apiKey) {
-                    alert('Please click the ⚙️ gear icon in the top right to enter your free API Key first.');
+                    alert('Please click the ⚙️ gear icon to set your API Key first.');
                     $('#settingsModal').removeClass('hidden');
                     return;
                 }
                 if (!selectedBase64Image) {
-                    alert('Please upload a board photo first.');
+                    alert('Please upload a board image first.');
                     return;
                 }
 
                 const btn = $(this);
                 const statusEl = $('#aiStatus');
                 btn.prop('disabled', true);
-                statusEl.removeClass('hidden').html('⏳ Analyzing pieces with Vision AI...');
+                statusEl.removeClass('hidden').html('⏳ Scanning with Vision AI...');
 
                 try {
-                    const systemPrompt = `You are an expert chess engine and computer vision system.
-Analyze this chessboard photo carefully. Look at all 64 squares from rank 8 to 1, and file a to h.
-Identify the piece on each square (White: K, Q, R, B, N, P; Black: k, q, r, b, n, p).
-Output ONLY the valid FEN string representing this position. Do NOT include markdown code blocks, backticks, or extra text.`;
-
-                    // Using the latest Google Gemini Flash multimodal endpoint
-                    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-                    const payload = {
-                        contents: [{
-                            parts: [
-                                { text: systemPrompt },
-                                {
-                                    inline_data: {
-                                        mime_type: selectedMimeType,
-                                        data: selectedBase64Image
-                                    }
-                                }
-                            ]
-                        }],
-                        generationConfig: {
-                            temperature: 0.1
-                        }
-                    };
+                    const systemPrompt = "Analyze this chessboard photo. Return ONLY the standard FEN representation. Do NOT include markdown blocks, quotes, or explanations.";
+                    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
                     const response = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-               
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: systemPrompt }, { inline_data: { mime_type: selectedMimeType, data: selectedBase64Image } }] }],
+                            generationConfig: { "temperature": 0.1 }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error?.message || 'API call failed');
+                    }
+
+                    const result = await response.json();
+                    let fen = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+                    fen = fen.replace(/```(fen)?\n?/gi, '').replace(/```/g, '').trim();
+
+                    const parts = fen.split(' ');
+                    if (parts.length === 1) fen += ' w KQkq - 0 1';
+
+                    if (game.load(fen)) {
+                        board.position(fen);
+                        syncFenFromGame();
+                        statusEl.html('🎉 Recognition complete.');
+                    } else {
+                        throw new Error("AI returned an invalid FEN string.");
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    statusEl.html(`❌ ${err.message}`);
+                    alert('Recognition failed: ' + err.message);
+                } finally {
+                    btn.prop('disabled', false);
+                }
+            });
+            
+            // --- 5. External Analysis Links ---
+            $('#btnLichess').click(function() {
+                const fen = encodeURIComponent($('#fenInput').val().trim());
+                window.open(`https://lichess.org/analysis/${fen}`, '_blank');
+            });
+
+            $('#btnChessCom').click(function() {
+                const fen = encodeURIComponent($('#fenInput').val().trim());
+                window.open(`https://www.chess.com/analysis?fen=${fen}`, '_blank');
+            });
+        });
+    </script>
+</body>
+</html>
