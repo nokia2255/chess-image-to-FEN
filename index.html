@@ -115,4 +115,59 @@
                             📋 Copy FEN
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Online Engine Analysis -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                <h2 class="text-base font-semibold flex items-center gap-2 mb-3">
+                    <span>🚀</span> Step 3: Online Engine Analysis
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">Export this position directly into online analysis engines:</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btnLichess" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-blue-900/40 border border-slate-700 hover:border-blue-500/50 rounded-xl text-xs font-medium text-slate-200 transition">
+                        <span>🐴</span> Open on Lichess
+                    </button>
+                    <button id="btnChessCom" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-800 hover:bg-emerald-900/40 border border-slate-700 hover:border-emerald-500/50 rounded-xl text-xs font-medium text-slate-200 transition">
+                        <span>♟️</span> Open on Chess.com
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Hidden Settings Modal (Only opens when you click the ⚙️ gear icon) -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <span>⚙️</span> Vision API Settings
+                </h3>
+                <button id="btnCloseSettings" class="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+                Enter your free Google Gemini API Key below. It is saved <strong>strictly inside your personal browser</strong> (localStorage). It is never sent to any server or published on GitHub.
+            </p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Gemini API Key</label>
+                    <input type="password" id="modalApiKeyInput" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 outline-none" placeholder="AIzaSy...">
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 hover:underline">
+                        Get a Free Key at Google AI Studio ↗
+                    </a>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button id="btnSaveModalKey" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition shadow-lg shadow-blue-500/20">
+                        Save Key Locally
+                    </button>
+                    <button id="btnClearModalKey" class="py-2.5 px-3 bg-slate-800 hover:bg-rose-900/50 text-rose-400 rounded-xl text-xs transition">
+                        Remove
+                    </button>
                 </di
